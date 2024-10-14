@@ -14,6 +14,7 @@ import (
 	"github.com/pion/logging"
 	"github.com/pion/stun/v3"
 	"github.com/pion/transport/v3/test"
+	"github.com/pion/turn/v4/internal"
 	"github.com/pion/turn/v4/internal/allocation"
 	"github.com/pion/turn/v4/internal/proto"
 	"github.com/stretchr/testify/assert"
@@ -85,7 +86,7 @@ func TestAllocationLifeTime(t *testing.T) {
 			Conn:              conn,
 			SrcAddr:           &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 5000},
 			Log:               logger,
-			AuthHandler: func(string, string, net.Addr) (key []byte, ok bool) {
+			AuthHandler: func(*internal.RequestAttributes) (key []byte, ok bool) {
 				return []byte(staticKey), true
 			},
 		}
@@ -144,7 +145,7 @@ func TestRequestedTransport(t *testing.T) {
 		Conn:              conn,
 		SrcAddr:           &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 5000},
 		Log:               logger,
-		AuthHandler: func(string, string, net.Addr) (key []byte, ok bool) {
+		AuthHandler: func(*internal.RequestAttributes) (key []byte, ok bool) {
 			return []byte(staticKey), true
 		},
 	}
@@ -196,7 +197,7 @@ func TestConnectRequest(t *testing.T) {
 		Conn:              conn,
 		SrcAddr:           &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 5000},
 		Log:               logger,
-		AuthHandler: func(string, string, net.Addr) (key []byte, ok bool) {
+		AuthHandler: func(*internal.RequestAttributes) (key []byte, ok bool) {
 			return []byte(staticKey), true
 		},
 	}
@@ -266,7 +267,7 @@ func TestConnectionBindRequest(t *testing.T) {
 		Conn:              conn,
 		SrcAddr:           &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 5000},
 		Log:               logger,
-		AuthHandler: func(string, string, net.Addr) (key []byte, ok bool) {
+		AuthHandler: func(*internal.RequestAttributes) (key []byte, ok bool) {
 			return []byte(staticKey), true
 		},
 	}
