@@ -66,13 +66,17 @@ and matches the certificate's Common Name to the TURN username.
 #### Will WebRTC prioritize using STUN over TURN?
 Yes.
 
+#### How do I use IPv6 with TURN?
+Set the `RequestedAddressFamily` field in `ClientConfig` to `proto.RequestedFamilyIPv6` to request IPv6 allocations.
+The server must be configured to listen on IPv6 addresses. See the [IPv6 examples](examples/turn-server/ipv6) for
+both client and server implementations. Per RFC 6156, if `RequestedAddressFamily` is not specified, the server
+will default to IPv4.
+
 ### RFCs
 #### Implemented
 * **RFC 5389**: [Session Traversal Utilities for NAT (STUN)][rfc5389]
 * **RFC 5766**: [Traversal Using Relays around NAT (TURN): Relay Extensions to Session Traversal Utilities for NAT (STUN)][rfc5766]
 * **RFC 6062**: [Traversal Using Relays around NAT (TURN) Extensions for TCP Allocations][rfc6062]
-
-#### Planned
 * **RFC 6156**: [Traversal Using Relays around NAT (TURN) Extension for IPv6][rfc6156]
 
 [rfc5389]: https://tools.ietf.org/html/rfc5389

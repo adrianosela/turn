@@ -51,6 +51,10 @@ type ClientConfig struct {
 	// PermissionTimeout sets the refresh interval of permissions. Defaults to 2 minutes.
 	PermissionRefreshInterval time.Duration
 
+	// RequestedAddressFamily is the address family to request in allocations (IPv4 or IPv6).
+	// If not specified, defaults to IPv4. See RFC 6156.
+	RequestedAddressFamily RequestedAddressFamily
+
 	evenPort               bool   // If EVEN-PORT Attribute should be sent in Allocation
 	reservationToken       []byte // If Server responds with RESERVATION-TOKEN or if Client wishes to send one
 	bindingRefreshInterval time.Duration
@@ -79,8 +83,15 @@ type Client struct {
 	mutexTrMap    sync.Mutex             // Thread-safe
 	log           logging.LeveledLogger  // Read-only
 
-	evenPort                  bool   // If EVEN-PORT Attribute should be sent in Allocation
-	reservationToken          []byte // If Server responds with RESERVATION-TOKEN or if Client wishes to send one
+	// If EVEN-PORT Attribute should be sent in Allocation
+	evenPort bool
+
+	// If Server responds with RESERVATION-TOKEN or if Client wishes to send one
+	reservationToken []byte
+
+	// REQUESTED-ADDRESS-FAMILY attribute for allocations (RFC 6156)
+	requestedAddressFamily proto.RequestedAddressFamily
+
 	permissionRefreshInterval time.Duration
 	bindingRefreshInterval    time.Duration
 	bindingCheckInterval      time.Duration
@@ -113,11 +124,23 @@ func NewClient(config *ClientConfig) (*Client, error) {
 		config.Net = n
 	}
 
+	// Default to IPv4 if RequestedAddressFamily is not specified (RFC 6156)
+	requestedFamily := config.RequestedAddressFamily
+	if requestedFamily == 0 {
+		requestedFamily = proto.RequestedFamilyIPv4
+	}
+
+	// Determine network based on requested address family
+	network := "udp4"
+	if requestedFamily == proto.RequestedFamilyIPv6 {
+		network = "udp6"
+	}
+
 	var stunServ, turnServ net.Addr
 	var err error
 
 	if len(config.STUNServerAddr) > 0 {
-		stunServ, err = config.Net.ResolveUDPAddr("udp4", config.STUNServerAddr)
+		stunServ, err = config.Net.ResolveUDPAddr(network, config.STUNServerAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +149,7 @@ func NewClient(config *ClientConfig) (*Client, error) {
 	}
 
 	if len(config.TURNServerAddr) > 0 {
-		turnServ, err = config.Net.ResolveUDPAddr("udp4", config.TURNServerAddr)
+		turnServ, err = config.Net.ResolveUDPAddr(network, config.TURNServerAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -148,6 +171,7 @@ func NewClient(config *ClientConfig) (*Client, error) {
 		log:                       log,
 		evenPort:                  config.evenPort,
 		reservationToken:          config.reservationToken,
+		requestedAddressFamily:    requestedFamily,
 		permissionRefreshInterval: config.PermissionRefreshInterval,
 		bindingRefreshInterval:    config.bindingRefreshInterval,
 		bindingCheckInterval:      config.bindingCheckInterval,
@@ -272,11 +296,14 @@ func (c *Client) sendAllocateRequest(protocol proto.Protocol) ( //nolint:cyclop
 		proto.RequestedTransport{Protocol: protocol},
 		stun.Fingerprint,
 	}
-	if c.evenPort {
-		allocationSetters = append(allocationSetters, proto.EvenPort{ReservePort: true})
-	}
+	// RFC 6156: REQUESTED-ADDRESS-FAMILY and RESERVATION-TOKEN are mutually exclusive.
 	if len(c.reservationToken) != 0 {
 		allocationSetters = append(allocationSetters, proto.ReservationToken(c.reservationToken))
+	} else {
+		allocationSetters = append(allocationSetters, c.requestedAddressFamily)
+	}
+	if c.evenPort {
+		allocationSetters = append(allocationSetters, proto.EvenPort{ReservePort: true})
 	}
 
 	msg, err := stun.Build(allocationSetters...)
@@ -313,11 +340,14 @@ func (c *Client) sendAllocateRequest(protocol proto.Protocol) ( //nolint:cyclop
 		&c.integrity,
 		stun.Fingerprint,
 	}
-	if c.evenPort {
-		allocationSetters = append(allocationSetters, proto.EvenPort{ReservePort: true})
-	}
+	// RFC 6156: REQUESTED-ADDRESS-FAMILY and RESERVATION-TOKEN are mutually exclusive.
 	if len(c.reservationToken) != 0 {
 		allocationSetters = append(allocationSetters, proto.ReservationToken(c.reservationToken))
+	} else {
+		allocationSetters = append(allocationSetters, c.requestedAddressFamily)
+	}
+	if c.evenPort {
+		allocationSetters = append(allocationSetters, proto.EvenPort{ReservePort: true})
 	}
 
 	msg, err = stun.Build(allocationSetters...)
