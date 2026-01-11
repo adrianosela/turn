@@ -587,3 +587,43 @@ func TestCreateTCPConnectionTimeout(t *testing.T) {
 	assert.NoError(t, ln.Close())
 	assert.NoError(t, turnSocket.Close())
 }
+
+func TestCreateAllocationIPv6(t *testing.T) {
+	manager, err := newTestManager()
+	assert.NoError(t, err)
+
+	// Create a UDP6 socket for TURN
+	turnSocket, err := net.ListenPacket("udp6", "[::]:0") // nolint: noctx
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, turnSocket.Close())
+	}()
+
+	fiveTuple := randomFiveTuple()
+	// Change the source address to IPv6
+	fiveTuple.SrcAddr = &net.UDPAddr{IP: net.ParseIP("::1"), Port: 5000}
+
+	// Create an IPv6 allocation
+	allocation, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv6,
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, allocation)
+	assert.Equal(t, proto.RequestedFamilyIPv6, allocation.AddressFamily())
+
+	// Verify allocation is retrievable
+	foundAllocation := manager.GetAllocation(fiveTuple)
+	assert.NotNil(t, foundAllocation)
+	assert.Equal(t, proto.RequestedFamilyIPv6, foundAllocation.AddressFamily())
+
+	// Delete allocation
+	manager.DeleteAllocation(fiveTuple)
+	assert.Nil(t, manager.GetAllocation(fiveTuple))
+}

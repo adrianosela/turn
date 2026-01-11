@@ -24,6 +24,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestAddressFamily(t *testing.T) {
+	t.Run("IPv4", func(t *testing.T) {
+		alloc := NewAllocation(nil, nil, EventHandler{}, nil)
+		alloc.addressFamily = proto.RequestedFamilyIPv4
+		assert.Equal(t, proto.RequestedFamilyIPv4, alloc.AddressFamily())
+	})
+
+	t.Run("IPv6", func(t *testing.T) {
+		alloc := NewAllocation(nil, nil, EventHandler{}, nil)
+		alloc.addressFamily = proto.RequestedFamilyIPv6
+		assert.Equal(t, proto.RequestedFamilyIPv6, alloc.AddressFamily())
+	})
+}
+
 func TestGetPermission(t *testing.T) {
 	alloc := NewAllocation(nil, nil, EventHandler{}, nil)
 
