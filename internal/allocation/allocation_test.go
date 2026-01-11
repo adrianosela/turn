@@ -249,7 +249,7 @@ func TestPacketHandler(t *testing.T) {
 	alloc, err := manager.CreateAllocation(&FiveTuple{
 		SrcAddr: clientListener.LocalAddr(),
 		DstAddr: turnSocket.LocalAddr(),
-	}, turnSocket, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "")
+	}, turnSocket, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "", proto.RequestedFamilyIPv4)
 
 	assert.NoError(t, err, "should succeed")
 
@@ -342,7 +342,7 @@ func TestTCPRelay_E2E(t *testing.T) {
 	alloc, err := manager.CreateAllocation(&FiveTuple{
 		SrcAddr: turnClient.LocalAddr(),
 		DstAddr: turnSocket.LocalAddr(),
-	}, turnSocket, proto.ProtoTCP, 0, proto.DefaultLifetime, username, realm)
+	}, turnSocket, proto.ProtoTCP, 0, proto.DefaultLifetime, username, realm, proto.RequestedFamilyIPv4)
 	assert.NoError(t, err)
 
 	tcpClient, err := net.Listen("tcp4", "127.0.0.1:0") // nolint: noctx

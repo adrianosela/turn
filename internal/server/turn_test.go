@@ -97,7 +97,16 @@ func TestAllocationLifeTime(t *testing.T) {
 
 		fiveTuple := &allocation.FiveTuple{SrcAddr: req.SrcAddr, DstAddr: req.Conn.LocalAddr(), Protocol: allocation.UDP}
 
-		_, err = req.AllocationManager.CreateAllocation(fiveTuple, req.Conn, proto.ProtoUDP, 0, time.Hour, "test", "")
+		_, err = req.AllocationManager.CreateAllocation(
+			fiveTuple,
+			req.Conn,
+			proto.ProtoUDP,
+			0,
+			time.Hour,
+			"test",
+			"",
+			proto.RequestedFamilyIPv4,
+		)
 		assert.NoError(t, err)
 
 		assert.NotNil(t, req.AllocationManager.GetAllocation(fiveTuple))
@@ -225,7 +234,16 @@ func TestConnectRequest(t *testing.T) {
 
 	fiveTuple := &allocation.FiveTuple{SrcAddr: req.SrcAddr, DstAddr: req.Conn.LocalAddr(), Protocol: allocation.UDP}
 
-	_, err = req.AllocationManager.CreateAllocation(fiveTuple, req.Conn, proto.ProtoUDP, 0, time.Hour, "test", "")
+	_, err = req.AllocationManager.CreateAllocation(
+		fiveTuple,
+		req.Conn,
+		proto.ProtoUDP,
+		0,
+		time.Hour,
+		"test",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NoError(t, err)
 
 	stunMsg := &stun.Message{}
@@ -309,7 +327,16 @@ func TestConnectionBindRequest(t *testing.T) {
 
 	fiveTuple := &allocation.FiveTuple{SrcAddr: req.SrcAddr, DstAddr: req.Conn.LocalAddr(), Protocol: allocation.UDP}
 
-	_, err = req.AllocationManager.CreateAllocation(fiveTuple, req.Conn, proto.ProtoUDP, 0, time.Hour, "", "")
+	_, err = req.AllocationManager.CreateAllocation(
+		fiveTuple,
+		req.Conn,
+		proto.ProtoUDP,
+		0,
+		time.Hour,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NoError(t, err)
 
 	m := &stun.Message{}

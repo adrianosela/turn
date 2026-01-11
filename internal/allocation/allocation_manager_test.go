@@ -61,15 +61,42 @@ func TestCreateInvalidAllocation(t *testing.T) {
 	manager, err := newTestManager()
 	assert.NoError(t, err)
 
-	a, err := manager.CreateAllocation(nil, turnSocket, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "")
+	a, err := manager.CreateAllocation(
+		nil,
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.Nil(t, a, "Illegally created allocation with nil FiveTuple")
 	assert.Error(t, err, "Illegally created allocation with nil FiveTuple")
 
-	a, err = manager.CreateAllocation(randomFiveTuple(), nil, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "")
+	a, err = manager.CreateAllocation(
+		randomFiveTuple(),
+		nil,
+		proto.ProtoUDP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.Nil(t, a, "Illegally created allocation with nil turnSocket")
 	assert.Error(t, err, "Illegally created allocation with nil turnSocket")
 
-	a, err = manager.CreateAllocation(randomFiveTuple(), turnSocket, proto.ProtoUDP, 0, 0, "", "")
+	a, err = manager.CreateAllocation(
+		randomFiveTuple(),
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		0,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.Nil(t, a, "Illegally created allocation with 0 lifetime")
 	assert.Error(t, err, "Illegally created allocation with 0 lifetime")
 
@@ -86,7 +113,16 @@ func TestCreateAllocation(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	a, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "")
+	a, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NotNil(t, a, "Failed to create allocation")
 	assert.NoError(t, err, "Failed to create allocation")
 
@@ -106,11 +142,29 @@ func TestCreateAllocationDuplicateFiveTuple(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	a, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "")
+	a, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NotNil(t, a, "Failed to create allocation")
 	assert.NoError(t, err, "Failed to create allocation")
 
-	a, err = manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "")
+	a, err = manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.Nil(t, a, "Was able to create allocation with same FiveTuple twice")
 	assert.Error(t, err, "Was able to create allocation with same FiveTuple twice")
 
@@ -126,7 +180,16 @@ func TestDeleteAllocation(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	a, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoUDP, 0, proto.DefaultLifetime, "", "")
+	a, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NotNil(t, a, "Failed to create allocation")
 	assert.NoError(t, err, "Failed to create allocation")
 
@@ -155,7 +218,16 @@ func TestAllocationTimeout(t *testing.T) {
 	for index := range allocations {
 		fiveTuple := randomFiveTuple()
 
-		a, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoUDP, 0, lifetime, "", "")
+		a, err := manager.CreateAllocation(
+			fiveTuple,
+			turnSocket,
+			proto.ProtoUDP,
+			0,
+			lifetime,
+			"",
+			"",
+			proto.RequestedFamilyIPv4,
+		)
 		assert.NoErrorf(t, err, "Failed to create allocation with %v", fiveTuple)
 
 		allocations[index] = a
@@ -181,9 +253,27 @@ func TestManagerClose(t *testing.T) {
 
 	allocations := make([]*Allocation, 2)
 
-	a1, _ := manager.CreateAllocation(randomFiveTuple(), turnSocket, proto.ProtoUDP, 0, time.Second, "", "")
+	a1, _ := manager.CreateAllocation(
+		randomFiveTuple(),
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		time.Second,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	allocations[0] = a1
-	a2, _ := manager.CreateAllocation(randomFiveTuple(), turnSocket, proto.ProtoUDP, 0, time.Minute, "", "")
+	a2, _ := manager.CreateAllocation(
+		randomFiveTuple(),
+		turnSocket,
+		proto.ProtoUDP,
+		0,
+		time.Minute,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	allocations[1] = a2
 
 	// Make a1 timeout
@@ -284,7 +374,16 @@ func TestCreateTCPConnection(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	allocation, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoTCP, 0, proto.DefaultLifetime, "", "")
+	allocation, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoTCP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NoError(t, err)
 	allocation.RelayAddr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: rand.Intn(60999-32768+1) + 32768} //nolint:gosec
 
@@ -348,7 +447,16 @@ func TestCreateTCPConnectionDuplicateTCPConn(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	allocation, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoTCP, 0, proto.DefaultLifetime, "", "")
+	allocation, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoTCP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NoError(t, err)
 
 	allocation.RelayAddr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: rand.Intn(60999-32768+1) + 32768} //nolint:gosec
@@ -374,7 +482,16 @@ func TestCreateTCPConnectionInvalidPeerAddress(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	allocation, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoTCP, 0, proto.DefaultLifetime, "", "")
+	allocation, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoTCP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NoError(t, err)
 	allocation.RelayAddr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: rand.Intn(60999-32768+1) + 32768} //nolint:gosec
 
@@ -395,7 +512,16 @@ func TestCreateTCPConnectionInvalid(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	allocation, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoTCP, 0, proto.DefaultLifetime, "", "")
+	allocation, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoTCP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NoError(t, err)
 	allocation.RelayAddr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: rand.Intn(60999-32768+1) + 32768} //nolint:gosec
 
@@ -435,7 +561,16 @@ func TestCreateTCPConnectionTimeout(t *testing.T) {
 	assert.NoError(t, err)
 
 	fiveTuple := randomFiveTuple()
-	allocation, err := manager.CreateAllocation(fiveTuple, turnSocket, proto.ProtoTCP, 0, proto.DefaultLifetime, "", "")
+	allocation, err := manager.CreateAllocation(
+		fiveTuple,
+		turnSocket,
+		proto.ProtoTCP,
+		0,
+		proto.DefaultLifetime,
+		"",
+		"",
+		proto.RequestedFamilyIPv4,
+	)
 	assert.NoError(t, err)
 	allocation.RelayAddr = &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: rand.Intn(60999-32768+1) + 32768} //nolint:gosec
 

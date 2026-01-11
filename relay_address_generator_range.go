@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/pion/randutil"
 	"github.com/pion/transport/v4"
@@ -76,7 +77,9 @@ func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(
 	requestedPort int,
 ) (net.PacketConn, net.Addr, error) {
 	if requestedPort != 0 {
-		conn, err := r.Net.ListenPacket(network, fmt.Sprintf("%s:%d", r.Address, requestedPort)) // nolint: noctx
+		// Use net.JoinHostPort to properly handle IPv6 addresses
+		listenAddr := net.JoinHostPort(r.Address, strconv.Itoa(requestedPort))
+		conn, err := r.Net.ListenPacket(network, listenAddr) // nolint: noctx
 		if err != nil {
 			return nil, nil, err
 		}
@@ -92,8 +95,10 @@ func (r *RelayAddressGeneratorPortRange) AllocatePacketConn(
 	}
 
 	for try := 0; try < r.MaxRetries; try++ {
-		port := r.MinPort + uint16(r.Rand.Intn(int((r.MaxPort+1)-r.MinPort)))           // nolint:gosec // G115 false positive
-		conn, err := r.Net.ListenPacket(network, fmt.Sprintf("%s:%d", r.Address, port)) // nolint: noctx
+		port := r.MinPort + uint16(r.Rand.Intn(int((r.MaxPort+1)-r.MinPort))) // nolint:gosec // G115 false positive
+		// Use net.JoinHostPort to properly handle IPv6 addresses
+		listenAddr := net.JoinHostPort(r.Address, strconv.Itoa(int(port)))
+		conn, err := r.Net.ListenPacket(network, listenAddr) // nolint: noctx
 		if err != nil {
 			continue
 		}
@@ -131,7 +136,9 @@ func (r *RelayAddressGeneratorPortRange) AllocateListener( // nolint: cyclop
 		Control: reuseport.Control,
 	})
 	listen := func(port int) (net.Listener, net.Addr, error) {
-		tcpAddr, err := r.Net.ResolveTCPAddr(network, fmt.Sprintf("%s:%d", r.Address, port))
+		// Use net.JoinHostPort to properly handle IPv6 addresses
+		listenAddr := net.JoinHostPort(r.Address, strconv.Itoa(port))
+		tcpAddr, err := r.Net.ResolveTCPAddr(network, listenAddr)
 		if err != nil {
 			return nil, nil, err
 		}
