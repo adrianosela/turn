@@ -21,7 +21,7 @@ const runesAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // See: https://tools.ietf.org/html/rfc5766#section-6.2
 // .
-func handleAllocateRequest(req Request, stunMsg *stun.Message) error { //nolint:cyclop
+func handleAllocateRequest(req Request, stunMsg *stun.Message) error { //nolint:cyclop,gocyclo,maintidx
 	req.Log.Debugf("Received AllocateRequest from %s", req.SrcAddr)
 
 	// 1. The server MUST require that the request be authenticated.  This
@@ -282,7 +282,7 @@ func handleRefreshRequest(req Request, stunMsg *stun.Message) error {
 		Protocol: allocation.UDP,
 	}
 
-	a := req.AllocationManager.GetAllocationForUsername(fiveTuple, username)
+	a := req.AllocationManager.GetAllocationForUsername(fiveTuple, username) //nolint:varnamelen
 	if a == nil {
 		return fmt.Errorf("%w %v:%v", errNoAllocationFound, req.SrcAddr, req.Conn.LocalAddr())
 	}
@@ -680,5 +680,6 @@ func ipMatchesFamily(ip net.IP, family proto.RequestedAddressFamily) bool {
 	if family == proto.RequestedFamilyIPv6 {
 		return ip.To4() == nil && ip.To16() != nil
 	}
+
 	return false
 }

@@ -154,32 +154,27 @@ func (m *Manager) CreateAllocation( // nolint: cyclop
 	alloc.realm = realm
 	alloc.addressFamily = addressFamily
 
-	if protocol == proto.ProtoUDP {
-		// Determine network type based on address family (RFC 6156)
+	switch protocol {
+	case proto.ProtoUDP:
 		network := "udp4"
 		if addressFamily == proto.RequestedFamilyIPv6 {
 			network = "udp6"
 		}
-
 		conn, relayAddr, err := m.allocatePacketConn(network, requestedPort)
 		if err != nil {
 			return nil, err
 		}
-
 		alloc.relayPacketConn = conn
 		alloc.RelayAddr = relayAddr
-	} else if protocol == proto.ProtoTCP {
-		// Determine network type based on address family (RFC 6156)
+	case proto.ProtoTCP:
 		network := "tcp4"
 		if addressFamily == proto.RequestedFamilyIPv6 {
 			network = "tcp6"
 		}
-
 		ln, relayAddr, err := m.allocateListener(network, requestedPort)
 		if err != nil {
 			return nil, err
 		}
-
 		alloc.relayListener = ln
 		alloc.RelayAddr = relayAddr
 	}

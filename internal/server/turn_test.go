@@ -356,7 +356,7 @@ func TestConnectionBindRequest(t *testing.T) {
 func TestRequestedAddressFamilyIPv6(t *testing.T) {
 	conn, err := net.ListenPacket("udp6", "[::]:0") // nolint: noctx
 	assert.NoError(t, err)
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	logger := logging.NewDefaultLoggerFactory().NewLogger("turn")
 
@@ -425,7 +425,7 @@ func TestRequestedAddressFamilyIPv6(t *testing.T) {
 func TestRequestedAddressFamilyUnsupported(t *testing.T) {
 	conn, err := net.ListenPacket("udp4", "0.0.0.0:0") // nolint: noctx
 	assert.NoError(t, err)
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	logger := logging.NewDefaultLoggerFactory().NewLogger("turn")
 
@@ -484,7 +484,7 @@ func TestRequestedAddressFamilyUnsupported(t *testing.T) {
 func TestRequestedAddressFamilyMutualExclusivity(t *testing.T) {
 	conn, err := net.ListenPacket("udp4", "0.0.0.0:0") // nolint: noctx
 	assert.NoError(t, err)
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	logger := logging.NewDefaultLoggerFactory().NewLogger("turn")
 
@@ -524,7 +524,7 @@ func TestRequestedAddressFamilyMutualExclusivity(t *testing.T) {
 	}
 
 	// Create message with both REQUESTED-ADDRESS-FAMILY and RESERVATION-TOKEN
-	m := &stun.Message{}
+	m := &stun.Message{} //nolint:varnamelen
 	m.TransactionID = stun.NewTransactionID()
 	assert.NoError(t, m.Build(stun.NewType(stun.MethodAllocate, stun.ClassRequest)))
 	assert.NoError(t, (proto.RequestedTransport{Protocol: proto.ProtoUDP}).AddTo(m))

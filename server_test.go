@@ -1526,12 +1526,12 @@ type dontFragmentConn struct {
 func (c *dontFragmentConn) ReadFrom(buff []byte) (n int, addr net.Addr, err error) {
 	n, addr, err = c.PacketConn.ReadFrom(buff)
 	if err != nil {
-		return
+		return n, addr, err
 	}
 
 	stunMsg := &stun.Message{Raw: buff[:n]}
 	if err = stunMsg.Decode(); err != nil {
-		return
+		return n, addr, err
 	}
 
 	stunMsg.Attributes = append(stunMsg.Attributes, stun.RawAttribute{Type: stun.AttrDontFragment})
@@ -1540,7 +1540,7 @@ func (c *dontFragmentConn) ReadFrom(buff []byte) (n int, addr net.Addr, err erro
 	copy(buff, stunMsg.Raw)
 	n = len(stunMsg.Raw)
 
-	return
+	return n, addr, err
 }
 
 func TestDontFragment(t *testing.T) {

@@ -15,9 +15,9 @@ type mockConn struct {
 	didClose, didLocalAddr, didRemoteAddr, didSetWriteDeadline, didSetDeadline, didSetReadDeadline bool
 }
 
-func (m *mockConn) Read(b []byte) (n int, err error) { return }
+func (m *mockConn) Read(b []byte) (n int, err error) { return n, err }
 
-func (m *mockConn) Write(b []byte) (n int, err error) { return }
+func (m *mockConn) Write(b []byte) (n int, err error) { return n, err }
 
 func (m *mockConn) Close() error {
 	m.didClose = true

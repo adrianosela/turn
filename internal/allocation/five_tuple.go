@@ -60,7 +60,7 @@ func (f *FiveTuple) Fingerprint() (fp FiveTupleFingerprint) {
 	fp.dstPort = dstPort
 	fp.protocol = f.Protocol
 
-	return
+	return fp
 }
 
 func netAddrIPAndPort(addr net.Addr) (net.IP, uint16) {
