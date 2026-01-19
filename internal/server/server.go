@@ -14,6 +14,7 @@ import (
 	"github.com/pion/stun/v3"
 	"github.com/pion/turn/v5/internal/allocation"
 	"github.com/pion/turn/v5/internal/auth"
+	"github.com/pion/turn/v5/internal/oauth"
 	"github.com/pion/turn/v5/internal/proto"
 )
 
@@ -31,6 +32,11 @@ type Request struct {
 
 	// User Configuration
 	AuthHandler auth.AuthHandler
+
+	// OAuth Configuration (optional, nil = disabled)
+	TokenManager     *oauth.TokenManager
+	TokenAuthHandler auth.TokenAuthHandler
+	OAuthServerURI   string
 
 	// Quota Handler
 	QuotaHandler func(username string, realm string, srcAddr net.Addr) (ok bool)

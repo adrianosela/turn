@@ -14,6 +14,7 @@ import (
 
 	"github.com/pion/logging"
 	"github.com/pion/turn/v5/internal/allocation"
+	"github.com/pion/turn/v5/internal/oauth"
 	"github.com/pion/turn/v5/internal/proto"
 	"github.com/pion/turn/v5/internal/server"
 )
@@ -33,6 +34,11 @@ type Server struct {
 	allocationLifetime time.Duration
 	nonceHash          server.NonceManager
 	eventHandler       EventHandler
+
+	// OAuth fields (nil if OAuth is disabled)
+	tokenManager     *oauth.TokenManager
+	tokenAuthHandler TokenAuthHandler
+	oauthServerURI   string
 
 	packetConnConfigs  []PacketConnConfig
 	listenerConfigs    []ListenerConfig
@@ -61,7 +67,24 @@ func NewServer(config ServerConfig) (*Server, error) { //nolint:gocognit,cyclop
 		return nil, err
 	}
 
-	server := &Server{
+	// Initialize OAuth token manager if configured
+	var tokenManager *oauth.TokenManager
+	var tokenAuthHandler TokenAuthHandler
+	var oauthServerURI string
+
+	if config.OAuthConfig != nil {
+		tokenManager, err = oauth.NewTokenManager(
+			config.OAuthConfig.EncryptionKey,
+			config.OAuthConfig.ServerName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create OAuth token manager: %w", err)
+		}
+		tokenAuthHandler = config.OAuthConfig.TokenAuthHandler
+		oauthServerURI = config.OAuthConfig.OAuthServerURI
+	}
+
+	srv := &Server{
 		log:                loggerFactory.NewLogger("turn"),
 		authHandler:        config.AuthHandler,
 		quotaHandler:       config.QuotaHandler,
@@ -74,49 +97,52 @@ func NewServer(config ServerConfig) (*Server, error) { //nolint:gocognit,cyclop
 		nonceHash:          nonceHash,
 		inboundMTU:         mtu,
 		eventHandler:       config.EventHandler,
+		tokenManager:       tokenManager,
+		tokenAuthHandler:   tokenAuthHandler,
+		oauthServerURI:     oauthServerURI,
 	}
 
-	if server.channelBindTimeout == 0 {
-		server.channelBindTimeout = proto.DefaultLifetime
+	if srv.channelBindTimeout == 0 {
+		srv.channelBindTimeout = proto.DefaultLifetime
 	}
-	if server.permissionTimeout == 0 {
-		server.permissionTimeout = allocation.DefaultPermissionTimeout
+	if srv.permissionTimeout == 0 {
+		srv.permissionTimeout = allocation.DefaultPermissionTimeout
 	}
-	if server.allocationLifetime == 0 {
-		server.allocationLifetime = proto.DefaultLifetime
+	if srv.allocationLifetime == 0 {
+		srv.allocationLifetime = proto.DefaultLifetime
 	}
 
-	for _, cfg := range server.packetConnConfigs {
-		am, err := server.createAllocationManager(cfg.RelayAddressGenerator, cfg.PermissionHandler)
+	for _, cfg := range srv.packetConnConfigs {
+		am, err := srv.createAllocationManager(cfg.RelayAddressGenerator, cfg.PermissionHandler)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AllocationManager: %w", err)
 		}
 
 		go func(cfg PacketConnConfig, am *allocation.Manager) {
-			server.readLoop(cfg.PacketConn, am, nil)
+			srv.readLoop(cfg.PacketConn, am, nil)
 
 			if err := am.Close(); err != nil {
-				server.log.Errorf("Failed to close AllocationManager: %s", err)
+				srv.log.Errorf("Failed to close AllocationManager: %s", err)
 			}
 		}(cfg, am)
 	}
 
-	for _, cfg := range server.listenerConfigs {
-		am, err := server.createAllocationManager(cfg.RelayAddressGenerator, cfg.PermissionHandler)
+	for _, cfg := range srv.listenerConfigs {
+		am, err := srv.createAllocationManager(cfg.RelayAddressGenerator, cfg.PermissionHandler)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AllocationManager: %w", err)
 		}
 
 		go func(cfg ListenerConfig, am *allocation.Manager) {
-			server.readListener(cfg.Listener, am)
+			srv.readListener(cfg.Listener, am)
 
 			if err := am.Close(); err != nil {
-				server.log.Errorf("Failed to close AllocationManager: %s", err)
+				srv.log.Errorf("Failed to close AllocationManager: %s", err)
 			}
 		}(cfg, am)
 	}
 
-	return server, nil
+	return srv, nil
 }
 
 // AllocationCount returns the number of active allocations.
@@ -270,6 +296,9 @@ func (s *Server) readLoop(conn net.PacketConn, allocationManager *allocation.Man
 			TLS:                tlsState,
 			Log:                s.log,
 			AuthHandler:        s.authHandler,
+			TokenManager:       s.tokenManager,
+			TokenAuthHandler:   s.tokenAuthHandler,
+			OAuthServerURI:     s.oauthServerURI,
 			QuotaHandler:       s.quotaHandler,
 			Realm:              s.realm,
 			AllocationManager:  allocationManager,

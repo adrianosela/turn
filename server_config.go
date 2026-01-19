@@ -114,6 +114,10 @@ type RequestAttributes = auth.RequestAttributes
 // allowing users to customize Pion TURN with custom behavior.
 type AuthHandler = auth.AuthHandler
 
+// TokenAuthHandler is a callback used to handle OAuth token-based authentication.
+// See auth.TokenAuthHandler for details.
+type TokenAuthHandler = auth.TokenAuthHandler
+
 // GenerateAuthKey is a convenience function to easily generate keys in the format used by AuthHandler.
 func GenerateAuthKey(username, realm, password string) []byte {
 	// #nosec
@@ -132,6 +136,31 @@ type EventHandler = allocation.EventHandler
 // rejected and a 486 (Allocation Quota Reached) error is returned to the user.
 type QuotaHandler func(username, realm string, srcAddr net.Addr) (ok bool)
 
+// OAuthConfig configures OAuth-based authentication per RFC 7635.
+// If nil, OAuth authentication is disabled and only traditional
+// long-term credential authentication is supported.
+type OAuthConfig struct {
+	// EncryptionKey is the 32-byte AES-256 key used to encrypt/decrypt access tokens.
+	// This key must be kept secret and shared with the OAuth authorization server.
+	EncryptionKey []byte
+
+	// ServerName is used as Additional Authenticated Data (AAD) when encrypting tokens.
+	// This binds tokens to this specific TURN server and prevents token reuse across
+	// different servers. Typically set to the server's domain name.
+	ServerName string
+
+	// OAuthServerURI is the URI of the OAuth authorization server where clients
+	// should request access tokens. This is returned in THIRD-PARTY-AUTHORIZATION
+	// attributes when clients attempt to authenticate without a token.
+	OAuthServerURI string
+
+	// TokenAuthHandler is an optional callback for additional token validation.
+	// If nil, all valid (non-expired, properly encrypted) tokens are accepted.
+	// If set, this handler can perform additional checks such as validating
+	// token claims, checking user permissions, etc.
+	TokenAuthHandler TokenAuthHandler
+}
+
 // ServerConfig configures the Pion TURN Server.
 type ServerConfig struct {
 	// PacketConnConfigs and ListenerConfigs are a list of all the turn listeners
@@ -148,6 +177,10 @@ type ServerConfig struct {
 	// AuthHandler is a callback used to handle incoming auth requests,
 	// allowing users to customize Pion TURN with custom behavior
 	AuthHandler AuthHandler
+
+	// OAuthConfig enables OAuth-based authentication per RFC 7635.
+	// If nil, OAuth is disabled and only traditional authentication is used.
+	OAuthConfig *OAuthConfig
 
 	// QuotaHandler is a callback used to reject new allocations when a
 	// per-user quota is exceeded.

@@ -11,6 +11,7 @@ import (
 
 	"github.com/pion/stun/v3"
 	"github.com/pion/turn/v5/internal/auth"
+	"github.com/pion/turn/v5/internal/oauth"
 	"github.com/pion/turn/v5/internal/proto"
 )
 
@@ -49,6 +50,78 @@ func buildMsg(
 	return append([]stun.Setter{&stun.Message{TransactionID: transactionID}, msgType}, additional...)
 }
 
+// respondWithThirdPartyAuth sends a 401 Unauthorized response with THIRD-PARTY-AUTHORIZATION
+// attribute, indicating that OAuth-based authentication is required.
+func respondWithThirdPartyAuth(req Request, stunMsg *stun.Message, callingMethod stun.Method, oauthServerURI string) error {
+	return buildAndSend(req.Conn, req.SrcAddr, buildMsg(stunMsg.TransactionID,
+		stun.NewType(callingMethod, stun.ClassErrorResponse),
+		&stun.ErrorCodeAttribute{Code: stun.CodeUnauthorized},
+		&proto.ThirdPartyAuthorization{ServerURI: oauthServerURI},
+		stun.NewRealm(req.Realm),
+	)...)
+}
+
+// authenticateWithToken handles OAuth token-based authentication per RFC 7635.
+// Returns the MAC key from the token, username, and any error.
+func authenticateWithToken(req Request, stunMsg *stun.Message, tokenManager *oauth.TokenManager, tokenAuthHandler auth.TokenAuthHandler) (
+	macKey []byte,
+	username string,
+	err error,
+) {
+	// Extract ACCESS-TOKEN attribute
+	accessTokenAttr := &proto.AccessToken{}
+	if err := accessTokenAttr.GetFrom(stunMsg); err != nil {
+		return nil, "", err
+	}
+
+	// Decrypt the token
+	token, err := tokenManager.DecryptToken(accessTokenAttr.EncryptedBlock)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to decrypt token: %w", err)
+	}
+
+	// Validate token timestamp and lifetime (5 second clock skew tolerance per RFC 7635)
+	const clockSkewTolerance = 5 * time.Second
+	if !token.IsValid(clockSkewTolerance) {
+		return nil, "", oauth.ErrTokenExpired
+	}
+
+	// Extract username from the message (still required)
+	usernameAttr := &stun.Username{}
+	if err := usernameAttr.GetFrom(stunMsg); err != nil {
+		return nil, "", fmt.Errorf("username required with access token: %w", err)
+	}
+
+	// If token auth handler is provided, call it for additional validation
+	if tokenAuthHandler != nil {
+		realmAttr := &stun.Realm{}
+		_ = realmAttr.GetFrom(stunMsg) // Realm is optional with tokens
+
+		validatedUsername, ok := tokenAuthHandler(token.MACKey, &auth.RequestAttributes{
+			Username:    usernameAttr.String(),
+			Realm:       realmAttr.String(),
+			SrcAddr:     req.SrcAddr,
+			TLS:         req.TLS,
+			AccessToken: accessTokenAttr.EncryptedBlock,
+		})
+
+		if !ok {
+			return nil, "", fmt.Errorf("token validation failed")
+		}
+
+		// Use the username returned by the handler (may differ from the one in the message)
+		if validatedUsername != "" {
+			username = validatedUsername
+		} else {
+			username = usernameAttr.String()
+		}
+	} else {
+		username = usernameAttr.String()
+	}
+
+	return token.MACKey, username, nil
+}
+
 func authenticateRequest(req Request, stunMsg *stun.Message, callingMethod stun.Method) (
 	messageIntegrity stun.MessageIntegrity,
 	hasAuth bool,
@@ -70,17 +143,42 @@ func authenticateRequest(req Request, stunMsg *stun.Message, callingMethod stun.
 	}
 
 	if !stunMsg.Contains(stun.AttrMessageIntegrity) {
+		// Check if OAuth is configured and respond with THIRD-PARTY-AUTHORIZATION
+		if req.TokenManager != nil && req.OAuthServerURI != "" {
+			return nil, false, "", respondWithThirdPartyAuth(req, stunMsg, callingMethod, req.OAuthServerURI)
+		}
 		return respondWithNonce(stun.CodeUnauthorized)
 	}
 
-	nonceAttr := &stun.Nonce{}
-	usernameAttr := &stun.Username{}
-	realmAttr := &stun.Realm{}
 	badRequestMsg := buildMsg(
 		stunMsg.TransactionID,
 		stun.NewType(callingMethod, stun.ClassErrorResponse),
 		&stun.ErrorCodeAttribute{Code: stun.CodeBadRequest},
 	)
+
+	// Try OAuth authentication first if ACCESS-TOKEN is present and OAuth is configured
+	if stunMsg.Contains(proto.AttrAccessToken) && req.TokenManager != nil {
+		macKey, username, err := authenticateWithToken(req, stunMsg, req.TokenManager, req.TokenAuthHandler)
+		if err != nil {
+			// OAuth authentication failed - respond with error
+			// Don't reveal details about why it failed (security)
+			return nil, false, "", buildAndSendErr(req.Conn, req.SrcAddr, err, badRequestMsg...)
+		}
+
+		// Verify MESSAGE-INTEGRITY using the MAC key from the token
+		if err := stun.MessageIntegrity(macKey).Check(stunMsg); err != nil {
+			genAuthEvent(req, stunMsg, callingMethod, false)
+			return nil, false, "", buildAndSendErr(req.Conn, req.SrcAddr, err, badRequestMsg...)
+		}
+
+		genAuthEvent(req, stunMsg, callingMethod, true)
+		return stun.MessageIntegrity(macKey), true, username, nil
+	}
+
+	// Fall back to traditional nonce-based authentication
+	nonceAttr := &stun.Nonce{}
+	usernameAttr := &stun.Username{}
+	realmAttr := &stun.Realm{}
 
 	// No Auth handler is set, server is running in STUN only mode
 	// Respond with 400 so clients don't retry.

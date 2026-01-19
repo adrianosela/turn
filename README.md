@@ -37,6 +37,16 @@ The advantage of this is that you don't need to deal with complicated config fil
 After you instantiate an instance of a Pion TURN server or client you interact with it like any library. The quickest way to get started is to look at the
 [examples](examples) or [GoDoc](https://godoc.org/github.com/pion/turn)
 
+### OAuth Authentication (RFC 7635)
+`pion/turn` supports OAuth-based third-party authorization as specified in [RFC 7635](https://tools.ietf.org/html/rfc7635). This allows TURN servers to delegate authentication to external OAuth authorization servers, providing:
+
+* **Token-based authentication** as an alternative to traditional long-term credentials
+* **Centralized authentication** using your existing OAuth infrastructure
+* **AES-256-GCM encrypted tokens** bound to specific servers
+* **Backward compatible** - OAuth and traditional authentication can coexist
+
+See the [OAuth example](examples/turn-server-oauth) for a complete implementation guide.
+
 ### Examples
 We try to cover most common use cases in [examples](examples). If more examples could be helpful please file an issue, we are always looking
 to expand and improve `pion/turn` to make it easier for developers.
