@@ -161,15 +161,19 @@ func authenticateRequest(req Request, stunMsg *stun.Message, callingMethod stun.
 		macKey, username, err := authenticateWithToken(req, stunMsg, req.TokenManager, req.TokenAuthHandler)
 		if err != nil {
 			// OAuth authentication failed - respond with error
-			// Don't reveal details about why it failed (security)
+			// Log the error server-side for debugging (don't send details to client)
+			req.Log.Debugf("OAuth authentication failed from %v: %v", req.SrcAddr, err)
 			return nil, false, "", buildAndSendErr(req.Conn, req.SrcAddr, err, badRequestMsg...)
 		}
 
 		// Verify MESSAGE-INTEGRITY using the MAC key from the token
+		req.Log.Debugf("Verifying MESSAGE-INTEGRITY for user %s with MAC key length: %d", username, len(macKey))
 		if err := stun.MessageIntegrity(macKey).Check(stunMsg); err != nil {
+			req.Log.Errorf("MESSAGE-INTEGRITY verification failed for user %s from %v: %v", username, req.SrcAddr, err)
 			genAuthEvent(req, stunMsg, callingMethod, false)
 			return nil, false, "", buildAndSendErr(req.Conn, req.SrcAddr, err, badRequestMsg...)
 		}
+		req.Log.Debugf("MESSAGE-INTEGRITY verified successfully for user %s", username)
 
 		genAuthEvent(req, stunMsg, callingMethod, true)
 		return stun.MessageIntegrity(macKey), true, username, nil

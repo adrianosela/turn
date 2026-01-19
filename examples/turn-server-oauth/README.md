@@ -16,17 +16,35 @@ OAuth authentication provides an alternative to traditional long-term credential
 
 ## Running the Example
 
+### Option 1: With Mock OAuth Server (Recommended for Testing)
+
 ```bash
-go run main.go -public-ip=YOUR_PUBLIC_IP -oauth-uri=https://your-oauth-server.com/token
+# Terminal 1: Start mock OAuth server
+cd ../mock-oauth-server
+go run main.go
+
+# Copy the encryption key from the output, then...
+
+# Terminal 2: Start TURN server with the same key
+cd ../turn-server-oauth
+go run main.go -public-ip=127.0.0.1 -oauth-uri=http://localhost:8080/token -key=PASTE_KEY_HERE
 ```
 
-### Required Parameters
+### Option 2: Generate Key in TURN Server
 
+```bash
+go run main.go -public-ip=YOUR_PUBLIC_IP -oauth-uri=https://your-oauth-server.com/token
+# Copy the generated key and configure your OAuth server to use it
+```
+
+### Parameters
+
+**Required:**
 - `-public-ip`: The public IP address where clients can reach the TURN server
 - `-oauth-uri`: The OAuth authorization server URI where clients should request tokens
 
-### Optional Parameters
-
+**Optional:**
+- `-key`: Encryption key in hex (64 characters). If not provided, generates a random key
 - `-port`: TURN server port (default: 3478)
 - `-realm`: Authentication realm (default: pion.ly)
 

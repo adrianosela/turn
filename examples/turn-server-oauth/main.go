@@ -6,6 +6,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"flag"
 	"log"
 	"net"
@@ -23,24 +24,36 @@ func main() {
 	port := flag.Int("port", 3478, "Listening port")
 	realm := flag.String("realm", "pion.ly", "Realm (defaults to pion.ly)")
 	oauthServerURI := flag.String("oauth-uri", "https://oauth.example.com/token", "OAuth authorization server URI")
+	encKeyHex := flag.String("key", "", "Encryption key in hex (64 chars for 32 bytes). If not provided, a random key will be generated.")
 	flag.Parse()
 
 	if len(*publicIP) == 0 {
 		log.Fatalf("'public-ip' is required")
 	}
 
-	// Generate a random 32-byte encryption key for AES-256-GCM
+	// Parse or generate encryption key
 	// In production, this key should be:
 	// 1. Stored securely (e.g., in a secrets manager)
 	// 2. Shared with the OAuth authorization server
 	// 3. Rotated periodically
-	encryptionKey := make([]byte, 32)
-	if _, err := rand.Read(encryptionKey); err != nil {
-		log.Fatalf("Failed to generate encryption key: %v", err)
+	var encryptionKey []byte
+	if *encKeyHex != "" {
+		var err error
+		encryptionKey, err = hex.DecodeString(*encKeyHex)
+		if err != nil || len(encryptionKey) != 32 {
+			log.Fatalf("Invalid encryption key. Must be 64 hex characters (32 bytes)")
+		}
+		log.Printf("Using provided encryption key")
+	} else {
+		// Generate a random key if not provided
+		encryptionKey = make([]byte, 32)
+		if _, err := rand.Read(encryptionKey); err != nil {
+			log.Fatalf("Failed to generate encryption key: %v", err)
+		}
+		log.Printf("Generated encryption key: %x", encryptionKey)
+		log.Printf("⚠️  Share this key with your OAuth server!")
+		log.Printf("    Start OAuth server with: -key=%x", encryptionKey)
 	}
-
-	log.Printf("Encryption key (hex): %x", encryptionKey)
-	log.Printf("Share this key with your OAuth server!")
 
 	// Create a UDP listener to pass into pion/turn
 	udpListener, err := net.ListenPacket("udp4", "0.0.0.0:"+strconv.Itoa(*port))

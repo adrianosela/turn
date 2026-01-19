@@ -99,6 +99,11 @@ func handleTURNPacket(req Request) error {
 	unknownAttributes := []stun.AttrType(nil)
 	for _, attr := range stunMsg.Attributes {
 		if attr.Type.Required() && !attr.Type.Known() {
+			// Allow ACCESS-TOKEN attribute (RFC 7635 OAuth)
+			// It's handled by our authentication code
+			if attr.Type == proto.AttrAccessToken {
+				continue
+			}
 			unknownAttributes = append(unknownAttributes, attr.Type)
 		}
 	}
